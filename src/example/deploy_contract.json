@@ -1,0 +1,20 @@
+{
+    "deploy_obj": [
+        {
+            "code_path": ".\\src\\example\\test.bin",
+            "abi_path": ".\\src\\example\\test.abi",
+            "sec_key": "b0d07ebea59b45b6001322e326e3b46043187bcb187fc6254164017877b4af28",
+            "gas": 2100000,
+            "gas_price": 1000,
+            "args": ""
+        },
+        {
+            "code_path": ".\\src\\example\\test.bin",
+            "abi_path": ".\\src\\example\\test.abi",
+            "sec_key": "b0d07ebea59b45b6001322e326e3b46043187bcb187fc6254164017877b4af28",
+            "gas": 2100000,
+            "gas_price": 1000,
+            "args": ""
+        }
+    ]
+}
