@@ -10,7 +10,7 @@ use web3::{
 
 const PULL_INTERVAL: u64 = 50;
 
-pub async fn contract_deploy(
+pub(crate) async fn contract_deploy(
     rpc_url: &str,
     sec_key: &str,
     code_path: &str,
@@ -53,7 +53,7 @@ pub async fn contract_deploy(
     Ok(contract.address())
 }
 
-pub async fn contract_call(
+pub(crate) async fn contract_call(
     rpc_url: &str,
     contr_addr: &str,
     sec_key: &str,
@@ -81,7 +81,7 @@ pub async fn contract_call(
     Ok(transaction_hash)
 }
 
-pub async fn contract_query(
+pub(crate) async fn contract_query(
     rpc_url: &str,
     contr_addr: &str,
     // _account: &str,
@@ -100,7 +100,7 @@ pub async fn contract_query(
     Ok(result)
 }
 
-pub async fn get_balance(rpc_url: &str, account: &str) -> web3::Result<U256> {
+pub(crate) async fn get_balance(rpc_url: &str, account: &str) -> web3::Result<U256> {
     let transport = web3::transports::Http::new(&rpc_url)?;
     let web3 = web3::Web3::new(transport);
 

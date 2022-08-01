@@ -7,32 +7,32 @@ use tokio::fs;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "platform tool")]
-pub struct Opt {
+pub(crate) struct Opt {
     // /// version
     #[structopt(name = "version", short = "v")]
-    pub version: bool,
+    pub(crate) version: bool,
 
     // Note that we mark a field as a subcommand
     #[structopt(subcommand)]
-    pub cmd: Option<Command>,
+    pub(crate) cmd: Option<Command>,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "sub command")]
-pub enum Command {
+pub(crate) enum Command {
     Account(Account),
     Contract(Contr),
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "account manage")]
-pub enum Account {
+pub(crate) enum Account {
     Getbalance(GetBalance),
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "contract manage")]
-pub enum Contr {
+pub(crate) enum Contr {
     Deploy(Deploy),
     Call(Call),
     Query(Query),
@@ -40,89 +40,89 @@ pub enum Contr {
 
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(about = "contract deploy")]
-pub struct Deploy {
+pub(crate) struct Deploy {
     /// http rpc url
     #[structopt(name = "rpc url", short = "u", long = "rpc-url")]
-    pub rpc_url: String,
+    pub(crate) rpc_url: String,
 
     /// config file path
     #[structopt(name = "config file", short = "g", long = "config", parse(from_os_str))]
-    pub config: PathBuf,
+    pub(crate) config: PathBuf,
 
     // /// total execute count you need
     // #[structopt(name = "execute count", short = "c", long = "count")]
-    // pub count: Option<u32>,
+    // pub(crate) count: Option<u32>,
     /// max concurrent tasks
     #[structopt(name = "max concurrent tasks", short = "m", long = "max-multi")]
-    pub max_concurrent: Option<u32>,
+    pub(crate) _max_concurrent: Option<u32>,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "contract call")]
-pub struct Call {
+pub(crate) struct Call {
     /// http rpc url
     #[structopt(name = "rpc url", short = "u", long = "rpc-url")]
-    pub rpc_url: String,
+    pub(crate) rpc_url: String,
 
     /// config file path
     #[structopt(name = "config file", short = "g", long = "config", parse(from_os_str))]
-    pub config: PathBuf,
+    pub(crate) config: PathBuf,
 
     // /// total execute count you need
     // #[structopt(name = "execute count", short = "c", long = "count")]
-    // pub count: Option<u32>,
+    // pub(crate) count: Option<u32>,
     /// max concurrent tasks
     #[structopt(name = "max concurrent tasks", short = "m", long = "max-multi")]
-    pub max_concurrent: Option<u32>,
+    pub(crate) _max_concurrent: Option<u32>,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "contract query")]
-pub struct Query {
+pub(crate) struct Query {
     /// http rpc url
     #[structopt(name = "rpc url", short = "u", long = "rpc-url")]
-    pub rpc_url: String,
+    pub(crate) rpc_url: String,
 
     /// config file path
     #[structopt(name = "config file", short = "g", long = "config", parse(from_os_str))]
-    pub config: PathBuf,
+    pub(crate) config: PathBuf,
 
     /// total execute count you need
     #[structopt(name = "execute count", short = "c", long = "count")]
-    pub count: Option<u32>,
+    pub(crate) _count: Option<u32>,
 
     /// max concurrent tasks
     #[structopt(name = "max concurrent tasks", short = "m", long = "max-multi")]
-    pub max_concurrent: Option<u32>,
+    pub(crate) _max_concurrent: Option<u32>,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "get balance")]
-pub struct GetBalance {
+pub(crate) struct GetBalance {
     /// http rpc url
     #[structopt(name = "rpc url", short = "u", long = "rpc-url")]
-    pub rpc_url: String,
+    pub(crate) rpc_url: String,
 
     #[structopt(name = "account")]
-    pub account: String,
+    pub(crate) account: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct DeployJsonObj {
-    pub code_path: String,
-    pub abi_path: String,
-    pub sec_key: String,
-    pub gas: u32,
-    pub gas_price: u32,
-    pub args: String,
+pub(crate) struct DeployJsonObj {
+    pub(crate) code_path: String,
+    pub(crate) abi_path: String,
+    pub(crate) sec_key: String,
+    pub(crate) gas: u32,
+    pub(crate) gas_price: u32,
+    pub(crate) args: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct DeployJson {
-    pub deploy_obj: Vec<DeployJsonObj>,
+pub(crate) struct DeployJson {
+    pub(crate) deploy_obj: Vec<DeployJsonObj>,
 }
 
-pub async fn parse_deploy_json(pat: &PathBuf) -> anyhow::Result<DeployJson> {
+pub(crate) async fn parse_deploy_json(pat: &PathBuf) -> anyhow::Result<DeployJson> {
     let deploy_json_bytes = fs::read(pat).await?;
     let deply_json_obj: DeployJson = serde_json::from_slice(deploy_json_bytes.as_slice())?;
 
@@ -130,21 +130,21 @@ pub async fn parse_deploy_json(pat: &PathBuf) -> anyhow::Result<DeployJson> {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct CallJsonObj {
-    pub contract_addr: String,
-    pub abi_path: String,
-    pub sec_key: String,
-    pub gas: u32,
-    pub gas_price: u32,
-    pub args: String,
+pub(crate) struct CallJsonObj {
+    pub(crate) contract_addr: String,
+    pub(crate) abi_path: String,
+    pub(crate) sec_key: String,
+    pub(crate) gas: u32,
+    pub(crate) gas_price: u32,
+    pub(crate) args: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct CallJson {
-    pub call_obj: Vec<CallJsonObj>,
+pub(crate) struct CallJson {
+    pub(crate) call_obj: Vec<CallJsonObj>,
 }
 
-pub async fn parse_call_json(pat: PathBuf) -> anyhow::Result<CallJson> {
+pub(crate) async fn parse_call_json(pat: PathBuf) -> anyhow::Result<CallJson> {
     let call_json_bytes = fs::read(pat).await?;
     let call_json_obj: CallJson = serde_json::from_slice(call_json_bytes.as_slice())?;
 
@@ -152,13 +152,13 @@ pub async fn parse_call_json(pat: PathBuf) -> anyhow::Result<CallJson> {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct QueryJson {
-    pub contract_addr: String,
-    pub abi_path: String,
-    pub args: String,
+pub(crate) struct QueryJson {
+    pub(crate) contract_addr: String,
+    pub(crate) abi_path: String,
+    pub(crate) args: String,
 }
 
-pub async fn parse_query_json(pat: PathBuf) -> anyhow::Result<QueryJson> {
+pub(crate) async fn parse_query_json(pat: PathBuf) -> anyhow::Result<QueryJson> {
     let query_json_bytes = fs::read(pat).await?;
     let query_json_obj: QueryJson = serde_json::from_slice(query_json_bytes.as_slice())?;
 

@@ -1,9 +1,10 @@
-use crate::commands::{CallJson, CallJsonObj, DeployJson, DeployJsonObj};
 // use crate::get_timestamp;
-use crate::task_impl::{contract_call, contract_deploy};
+
 use anyhow;
 use lazy_static::lazy_static;
 use tokio::sync::mpsc::Receiver;
+
+use std::future::Future;
 
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -11,56 +12,35 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 lazy_static! {
-    pub static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
-    pub static ref MAX_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(2));
+    pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
+    pub(crate) static ref MAX_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(2));
     // total success tasks、total tasks cost time、average tasks cost time queue
-    pub static ref RES_QUEUE_SECS: Arc<Mutex<(u32, u128, Vec::<u128>)>> = Arc::new(Mutex::new((0, 0, Vec::new())));
+    pub(crate) static ref RES_QUEUE_SECS: Arc<Mutex<(u32, u128, Vec::<u128>)>> = Arc::new(Mutex::new((0, 0, Vec::new())));
 
 }
 const RES_QUEUE_MAX_LEN: usize = 10;
 const UPDATE_INTERVAL: u64 = 300;
 const DELTA_RANGE: u128 = 100;
 
-pub async fn concurrent_contract_deploy(
-    // total_task: u32,
-    rpc_url: &str,
-    // // _account: &str,
-    // sec_key: &str,
-    // code_path: &str,
-    // abi_path: &str,
-    // gas: u32,
-    // gas_price: u32,
-    deploy_json: DeployJson,
-) -> anyhow::Result<(u32, u128)> {
-    let mut task_queue = Vec::with_capacity(deploy_json.deploy_obj.len());
-
-    for deploy_obj in deploy_json.deploy_obj {
-        let rpc_url = String::from(rpc_url);
-
-        let DeployJsonObj {
-            code_path,
-            abi_path,
-            sec_key,
-            gas,
-            gas_price,
-            args: _args,
-        } = deploy_obj;
-
+pub(crate) async fn multi_tasks_impl<F, T>(vf: Vec<F>) -> anyhow::Result<(u32, u128)>
+where
+    F: FnOnce() -> T,
+    T: Future<Output = anyhow::Result<()>> + Send + 'static,
+{
+    let mut task_queue = Vec::with_capacity(vf.len());
+    for f in vf {
+        let af = f();
         let task = tokio::spawn(async move {
             CUR_TASKS.store(CUR_TASKS.load(Ordering::Acquire) + 1, Ordering::Release);
 
             let beg_time = get_timestamp();
 
-            match contract_deploy(&rpc_url, &sec_key, &code_path, &abi_path, gas, gas_price).await {
-                Ok(v) => {
+            match af.await {
+                Ok(_) => {
                     let end_time = get_timestamp();
                     update_res_queue_secs(end_time - beg_time).await;
-
-                    println!("contract address: {:?}", v);
                 }
-                Err(e) => {
-                    println!("deploy contract failed: {:?}", e);
-                }
+                Err(_) => {}
             };
             CUR_TASKS.store(CUR_TASKS.load(Ordering::Acquire) - 1, Ordering::Release);
         });
@@ -83,81 +63,6 @@ pub async fn concurrent_contract_deploy(
 
     // error occur
     // return anyhow::Ok((RES_QUEUE_SECS.lock().await.0, RES_QUEUE_SECS.lock().await.1));
-
-    let success_task = RES_QUEUE_SECS.lock().await.0;
-    let total_times = RES_QUEUE_SECS.lock().await.1;
-
-    return anyhow::Ok((success_task, total_times));
-}
-
-pub async fn concurrent_contract_call(
-    // total_task: u32,
-    rpc_url: &str,
-    // // _account: &str,
-    // sec_key: &str,
-    // code_path: &str,
-    // abi_path: &str,
-    // gas: u32,
-    // gas_price: u32,
-    call_json: CallJson,
-) -> anyhow::Result<(u32, u128)> {
-    let mut task_queue = Vec::with_capacity(call_json.call_obj.len());
-
-    for call_obj in call_json.call_obj {
-        let rpc_url = String::from(rpc_url);
-
-        let CallJsonObj {
-            contract_addr,
-            abi_path,
-            sec_key,
-            gas,
-            gas_price,
-            args: _args,
-        } = call_obj;
-
-        let task = tokio::spawn(async move {
-            CUR_TASKS.store(CUR_TASKS.load(Ordering::Acquire) + 1, Ordering::Release);
-
-            let beg_time = get_timestamp();
-
-            match contract_call(
-                &rpc_url,
-                &contract_addr,
-                &sec_key,
-                &abi_path,
-                gas,
-                gas_price,
-            )
-            .await
-            {
-                Ok(v) => {
-                    let end_time = get_timestamp();
-                    update_res_queue_secs(end_time - beg_time).await;
-
-                    println!("transaction hash: {:?}", v);
-                }
-                Err(e) => {
-                    println!("call contract failed: {:?}", e);
-                }
-            };
-            CUR_TASKS.store(CUR_TASKS.load(Ordering::Acquire) - 1, Ordering::Release);
-        });
-        task_queue.push(task);
-
-        while MAX_TASKS.load(Ordering::Acquire) <= CUR_TASKS.load(Ordering::Acquire) {
-            let task = task_queue.pop().unwrap();
-            task.await?;
-        }
-    }
-
-    let (tx1, rx1) = tokio::sync::mpsc::channel(2);
-    tokio::spawn(max_tasks_update(rx1));
-
-    for task in task_queue {
-        task.await?;
-    }
-
-    tx1.send(()).await?;
 
     let success_task = RES_QUEUE_SECS.lock().await.0;
     let total_times = RES_QUEUE_SECS.lock().await.1;

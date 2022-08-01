@@ -6,9 +6,11 @@ mod task_impl;
 use commands::{
     parse_call_json, parse_deploy_json, parse_query_json, Account, Command, Contr, Opt,
 };
-use multi_tasks::{concurrent_contract_call, concurrent_contract_deploy};
+use commands::{CallJsonObj, DeployJsonObj};
 use task_impl::{contract_query, get_balance};
 
+use multi_tasks::multi_tasks_impl;
+use task_impl::{contract_call, contract_deploy};
 // const MIN_TASK: u32 = 10;
 
 #[tokio::main]
@@ -38,8 +40,41 @@ async fn main() -> anyhow::Result<()> {
                     //         panic!("total task not be less than {}", MIN_TASK);
                     //     }
                     // }
-                    let (success_task, total_times) =
-                        concurrent_contract_deploy(&deploy.rpc_url, deploy_json).await?;
+
+                    let mut vf = Vec::new();
+                    for deploy_obj in deploy_json.deploy_obj {
+                        let rpc_url = deploy.rpc_url.clone();
+
+                        let DeployJsonObj {
+                            code_path,
+                            abi_path,
+                            sec_key,
+                            gas,
+                            gas_price,
+                            args: _args,
+                        } = deploy_obj;
+
+                        let f = move || async move {
+                            match contract_deploy(
+                                &rpc_url, &sec_key, &code_path, &abi_path, gas, gas_price,
+                            )
+                            .await
+                            {
+                                Ok(v) => {
+                                    println!("contract address: {:?}", v);
+                                    return Ok(());
+                                }
+                                Err(e) => {
+                                    println!("deploy contract failed: {:?}", e);
+                                    anyhow::bail!("deploy failed");
+                                }
+                            };
+                        };
+
+                        vf.push(f);
+                    }
+
+                    let (success_task, total_times) = multi_tasks_impl(vf).await?;
                     println!(
                         "success task: {} total times: {} average time: {}",
                         success_task,
@@ -54,8 +89,46 @@ async fn main() -> anyhow::Result<()> {
                 Contr::Call(call) => {
                     let call_json = parse_call_json(call.config).await?;
 
-                    let (success_task, total_times) =
-                        concurrent_contract_call(&call.rpc_url, call_json).await?;
+                    let mut vf = Vec::new();
+                    for call_obj in call_json.call_obj {
+                        let rpc_url = call.rpc_url.clone();
+
+                        let CallJsonObj {
+                            contract_addr,
+                            abi_path,
+                            sec_key,
+                            gas,
+                            gas_price,
+                            args: _args,
+                        } = call_obj;
+
+                        let f = move || async move {
+                            match contract_call(
+                                &rpc_url,
+                                &sec_key,
+                                &contract_addr,
+                                &abi_path,
+                                gas,
+                                gas_price,
+                            )
+                            .await
+                            {
+                                Ok(v) => {
+                                    println!("transaction hash: {:?}", v);
+                                    return Ok(());
+                                }
+                                Err(e) => {
+                                    println!("call contract failed: {:?}", e);
+                                    anyhow::bail!("call failed");
+                                }
+                            };
+                        };
+
+                        vf.push(f);
+                    }
+
+                    let (success_task, total_times) = multi_tasks_impl(vf).await?;
+
                     println!(
                         "success task: {} total times: {} average time: {}",
                         success_task,
