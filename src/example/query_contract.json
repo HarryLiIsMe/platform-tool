@@ -1,5 +1,6 @@
 {
     "contract_addr": "0x387af7ac176b42d9566adff287f3577ab528e2ac",
     "abi_path": ".\\src\\example\\test.abi",
+    "func_name": "retrieve",
     "args": ""
 }

@@ -3,14 +3,14 @@ use structopt::StructOpt;
 mod commands;
 mod multi_tasks;
 mod task_impl;
-use commands::{
-    parse_call_json, parse_deploy_json, parse_query_json, Account, Command, Contr, Opt,
-};
-use commands::{CallJsonObj, DeployJsonObj};
-use task_impl::{contract_query, get_balance};
 
+use commands::{
+    parse_args_csv, parse_call_json, parse_deploy_json, parse_query_json, Account, CallJsonObj,
+    Command, Contr, DeployJsonObj, Opt, QueryJson,
+};
 use multi_tasks::multi_tasks_impl;
-use task_impl::{contract_call, contract_deploy};
+use task_impl::{contract_call, contract_deploy, contract_query, get_balance};
+
 // const MIN_TASK: u32 = 10;
 
 #[tokio::main]
@@ -51,12 +51,13 @@ async fn main() -> anyhow::Result<()> {
                             sec_key,
                             gas,
                             gas_price,
-                            args: _args,
+                            args,
                         } = deploy_obj;
+                        let args = parse_args_csv(&args)?;
 
                         let f = move || async move {
                             match contract_deploy(
-                                &rpc_url, &sec_key, &code_path, &abi_path, gas, gas_price,
+                                &rpc_url, &sec_key, &code_path, &abi_path, gas, gas_price, args,
                             )
                             .await
                             {
@@ -99,8 +100,10 @@ async fn main() -> anyhow::Result<()> {
                             sec_key,
                             gas,
                             gas_price,
-                            args: _args,
+                            func_name,
+                            args,
                         } = call_obj;
+                        let args = parse_args_csv(&args)?;
 
                         let f = move || async move {
                             match contract_call(
@@ -110,6 +113,8 @@ async fn main() -> anyhow::Result<()> {
                                 &abi_path,
                                 gas,
                                 gas_price,
+                                &func_name,
+                                args,
                             )
                             .await
                             {
@@ -141,13 +146,18 @@ async fn main() -> anyhow::Result<()> {
                     );
                 }
                 Contr::Query(query) => {
-                    let query_json_obj = parse_query_json(query.config).await?;
-                    let result = contract_query(
-                        &query.rpc_url,
-                        &query_json_obj.contract_addr,
-                        &query_json_obj.abi_path,
-                    )
-                    .await?;
+                    let rpc_url = query.rpc_url;
+                    let QueryJson {
+                        contract_addr,
+                        abi_path,
+                        func_name,
+                        args,
+                    } = parse_query_json(query.config).await?;
+                    let args = parse_args_csv(&args)?;
+
+                    let result =
+                        contract_query(&rpc_url, &contract_addr, &abi_path, &func_name, args)
+                            .await?;
                     println!("query result: {:?}", result);
                 }
             },

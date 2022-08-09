@@ -2,14 +2,14 @@
 
 use anyhow;
 use lazy_static::lazy_static;
-use tokio::sync::mpsc::Receiver;
-
-use std::future::Future;
-
-use std::sync::atomic::AtomicU32;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::{
+    future::Future,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
+};
+use tokio::sync::{mpsc::Receiver, Mutex};
 
 lazy_static! {
     pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
